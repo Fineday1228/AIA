@@ -1,0 +1,1876 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="자연어를 입력하면 MariaDB SQL 쿼리로 변환해주는 AI 도구">
+  <title>AI콴텍 NL2SQL — 자연어 → SQL 변환기</title>
+  <style>
+/* ============================================================
+   NL2SQL — Premium Dark Theme with Glassmorphism
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ── Design Tokens ── */
+:root {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #111827;
+  --bg-card: rgba(17, 24, 39, 0.7);
+  --bg-glass: rgba(30, 41, 59, 0.5);
+  --bg-input: rgba(15, 23, 42, 0.8);
+  --border-glass: rgba(99, 102, 241, 0.15);
+  --border-focus: rgba(99, 102, 241, 0.5);
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-accent: #a5b4fc;
+
+  --accent-primary: #6366f1;
+  --accent-secondary: #818cf8;
+  --accent-gradient: linear-gradient(135deg, #6366f1, #8b5cf6, #a78bfa);
+  --accent-glow: rgba(99, 102, 241, 0.3);
+
+  --success: #34d399;
+  --warning: #fbbf24;
+  --error: #f87171;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 30px rgba(99, 102, 241, 0.15);
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Reset & Base ── */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── Background Effects ── */
+body::before {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 30% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+              radial-gradient(circle at 70% 80%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+              radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.04) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+  animation: bgFloat 30s ease-in-out infinite;
+}
+
+@keyframes bgFloat {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(2%, -1%) rotate(1deg); }
+  66% { transform: translate(-1%, 2%) rotate(-1deg); }
+}
+
+/* ── Layout ── */
+.app-container {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 24px 60px;
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+.app-header {
+  text-align: center;
+  padding: 40px 0 32px;
+  position: relative;
+}
+
+.app-header h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+
+.app-header .subtitle {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  color: var(--text-accent);
+  margin-top: 12px;
+}
+
+.header-badge .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── API Settings Bar ── */
+.api-settings {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 12px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  backdrop-filter: blur(12px);
+}
+
+.api-settings label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.api-settings input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.api-settings input:focus {
+  border-color: var(--border-focus);
+}
+
+.api-settings select {
+  background: var(--bg-input);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--transition);
+  min-width: 180px;
+}
+
+.api-settings select:focus {
+  border-color: var(--border-focus);
+}
+
+.api-settings select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.api-settings .save-btn {
+  background: var(--accent-gradient);
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.api-settings .save-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--accent-glow);
+}
+
+.api-status {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.api-status.connected {
+  background: rgba(52, 211, 153, 0.1);
+  color: var(--success);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+}
+
+.api-status.disconnected {
+  background: rgba(248, 113, 113, 0.1);
+  color: var(--error);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+/* ── Main Input Section ── */
+.input-section {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 24px;
+  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-glow);
+  transition: all var(--transition);
+}
+
+.input-section:focus-within {
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-glow), 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+.input-wrapper textarea {
+  width: 100%;
+  min-height: 100px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  transition: all var(--transition);
+}
+
+.input-wrapper textarea:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08);
+}
+
+.input-wrapper textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.input-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.char-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.btn-generate {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--accent-gradient);
+  color: white;
+  border: none;
+  padding: 12px 28px;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-generate:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px var(--accent-glow);
+}
+
+.btn-generate:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-generate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-generate .spinner {
+  display: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.btn-generate.loading .spinner {
+  display: block;
+}
+
+.btn-generate.loading .btn-text {
+  opacity: 0.6;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Example Cards ── */
+.examples-section {
+  margin-bottom: 24px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.section-title .icon {
+  font-size: 1rem;
+}
+
+.examples-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.example-card {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.example-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent-gradient);
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.example-card:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.example-card:hover::before {
+  opacity: 1;
+}
+
+.example-card .question {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.example-card .desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ── Result Section ── */
+.result-section {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 24px;
+  backdrop-filter: blur(16px);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.result-section.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: rgba(15, 23, 42, 0.6);
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.result-header .label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-accent);
+}
+
+.result-header .label .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.result-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.result-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  color: var(--text-accent);
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.result-actions button:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.result-actions button.copied {
+  background: rgba(52, 211, 153, 0.15);
+  border-color: rgba(52, 211, 153, 0.3);
+  color: var(--success);
+}
+
+.sql-output {
+  padding: 20px 24px;
+  overflow-x: auto;
+}
+
+.sql-output pre {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── SQL Syntax Highlighting ── */
+.sql-keyword { color: #c084fc; font-weight: 600; }
+.sql-function { color: #60a5fa; }
+.sql-string { color: #34d399; }
+.sql-number { color: #fbbf24; }
+.sql-comment { color: #64748b; font-style: italic; }
+.sql-operator { color: #f472b6; }
+.sql-table { color: #fb923c; }
+.sql-alias { color: #a5b4fc; }
+
+/* ── Tabs (History / Schema) ── */
+.tabs-container {
+  margin-bottom: 24px;
+}
+
+.tabs-header {
+  display: flex;
+  gap: 2px;
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  padding: 4px;
+  border: 1px solid var(--border-glass);
+  border-bottom: none;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 10px 20px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition);
+}
+
+.tab-btn.active {
+  background: var(--bg-glass);
+  color: var(--text-accent);
+}
+
+.tab-btn:hover:not(.active) {
+  color: var(--text-secondary);
+}
+
+.tab-content {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  backdrop-filter: blur(12px);
+  max-height: 450px;
+  overflow-y: auto;
+}
+
+.tab-panel {
+  display: none;
+  padding: 20px;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+/* ── History Panel ── */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-item {
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(99, 102, 241, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.history-item:hover {
+  border-color: rgba(99, 102, 241, 0.2);
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.history-item .h-question {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.history-item .h-time {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.history-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.history-item .h-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.history-item .h-actions button {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  color: var(--text-accent);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.history-item .h-actions button:hover {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.history-item .h-actions button.delete-btn {
+  color: var(--error);
+  border-color: rgba(248, 113, 113, 0.15);
+  background: rgba(248, 113, 113, 0.05);
+}
+
+.history-item .h-actions button.delete-btn:hover {
+  background: rgba(248, 113, 113, 0.15);
+}
+
+/* ── Schema Viewer ── */
+.schema-table {
+  margin-bottom: 20px;
+}
+
+.schema-table-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(99, 102, 241, 0.06);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition);
+  margin-bottom: 4px;
+}
+
+.schema-table-header:hover {
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.schema-table-header .table-name {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #fb923c;
+}
+
+.schema-table-header .table-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.schema-table-header .toggle-icon {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  transition: transform var(--transition);
+}
+
+.schema-table-header.open .toggle-icon {
+  transform: rotate(180deg);
+}
+
+.schema-columns {
+  display: none;
+  padding: 0 8px;
+}
+
+.schema-columns.open {
+  display: block;
+}
+
+.schema-col-row {
+  display: grid;
+  grid-template-columns: 160px 100px 1fr;
+  gap: 8px;
+  padding: 6px 14px;
+  font-size: 0.75rem;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.05);
+}
+
+.schema-col-row:last-child {
+  border-bottom: none;
+}
+
+.schema-col-name {
+  font-family: var(--font-mono);
+  color: var(--text-accent);
+  font-weight: 500;
+}
+
+.schema-col-type {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+.schema-col-desc {
+  color: var(--text-secondary);
+}
+
+/* ── Error / Toast ── */
+.error-message {
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: var(--radius-md);
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  color: var(--error);
+  font-size: 0.85rem;
+  display: none;
+}
+
+.error-message.visible {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 500;
+  z-index: 1000;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toast.visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.toast.success {
+  background: rgba(52, 211, 153, 0.15);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  color: var(--success);
+}
+
+.toast.info {
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: var(--text-accent);
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.4);
+}
+
+/* ── API Key Guide Modal ── */
+.guide-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  z-index: 2000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.guide-overlay.visible {
+  display: flex;
+}
+
+.guide-modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-xl);
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 32px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.guide-modal h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+}
+
+.guide-modal .guide-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+.guide-step {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  background: rgba(99, 102, 241, 0.05);
+  border: 1px solid rgba(99, 102, 241, 0.1);
+  border-radius: var(--radius-md);
+  transition: all var(--transition);
+}
+
+.guide-step:hover {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+.guide-step-num {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.guide-step-content {
+  flex: 1;
+}
+
+.guide-step-content strong {
+  display: block;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.guide-step-content p {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.guide-step-content a {
+  color: var(--accent-secondary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.guide-step-content a:hover {
+  text-decoration: underline;
+}
+
+.guide-step-content code {
+  background: rgba(99, 102, 241, 0.15);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-accent);
+}
+
+.guide-note {
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.15);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-top: 16px;
+}
+
+.guide-note strong {
+  color: var(--success);
+}
+
+.guide-close-btn {
+  display: block;
+  width: 100%;
+  margin-top: 20px;
+  padding: 12px;
+  background: var(--accent-gradient);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.guide-close-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px var(--accent-glow);
+}
+
+.api-settings .guide-link {
+  font-size: 0.75rem;
+  color: var(--accent-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--transition);
+  background: none;
+  border: none;
+  font-family: var(--font-sans);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.api-settings .guide-link:hover {
+  color: var(--text-primary);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .app-container {
+    padding: 16px 12px 40px;
+  }
+
+  .app-header h1 {
+    font-size: 1.6rem;
+  }
+
+  .api-settings {
+    flex-wrap: wrap;
+  }
+
+  .api-settings input {
+    flex-basis: 100%;
+  }
+
+  .examples-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .input-actions {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-end;
+  }
+
+  .schema-col-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .guide-modal {
+    padding: 20px;
+  }
+}
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <h1><img src="data:image/png;base64,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" alt="AI콴텍" style="height:40px;vertical-align:middle;margin-right:10px;">AI콴텍 NL2SQL</h1>
+      <p class="subtitle">자연어를 MariaDB SQL 쿼리로 변환합니다</p>
+      <div class="header-badge">
+        <span class="dot"></span>
+        Powered by Google Gemini
+      </div>
+    </header>
+
+    <!-- API Settings -->
+    <div class="api-settings">
+      <label for="apiKey">🔑 API Key</label>
+      <input type="password" id="apiKey" placeholder="API 키를 입력하세요">
+      <select id="modelSelect">
+        <option value="gemini-2.5-flash">Gemini 2.5 Flash (추천)</option>
+        <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+        <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
+        <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+      </select>
+      <button class="save-btn" id="saveApiKey">저장</button>
+      <span class="api-status disconnected" id="apiStatus">미연결</span>
+      <button class="guide-link" id="guideBtn">❓ API 키 발급 가이드</button>
+    </div>
+
+    <!-- API Key Guide Modal -->
+    <div class="guide-overlay" id="guideOverlay">
+      <div class="guide-modal">
+        <h2>🔑 API 키 발급 가이드</h2>
+        <p class="guide-subtitle">Google AI Studio에서 무료 API 키를 발급받아 사용하세요. (약 2분 소요)</p>
+
+        <div class="guide-step">
+          <div class="guide-step-num">1</div>
+          <div class="guide-step-content">
+            <strong>Google AI Studio 접속</strong>
+            <p><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">👉 aistudio.google.com/apikey</a> 에 접속합니다.<br>Google 계정으로 로그인하세요.</p>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="guide-step-num">2</div>
+          <div class="guide-step-content">
+            <strong>API 키 생성</strong>
+            <p><code>Create API Key</code> 버튼을 클릭합니다.<br>프로젝트를 선택하거나 새로 생성하세요.</p>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="guide-step-num">3</div>
+          <div class="guide-step-content">
+            <strong>API 키 복사</strong>
+            <p>생성된 키 (예: <code>AIzaSy...</code>)를 복사합니다.</p>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="guide-step-num">4</div>
+          <div class="guide-step-content">
+            <strong>여기에 붙여넣기</strong>
+            <p>상단의 API Key 입력란에 키를 붙여넣고 <code>저장</code> 버튼을 누르세요.<br>키는 브라우저에 안전하게 저장되며, 다음에 접속해도 유지됩니다.</p>
+          </div>
+        </div>
+
+        <div class="guide-note">
+          <strong>💡 참고:</strong> Google AI Studio의 Gemini API는 무료 등급이 제공됩니다. 일일 사용량 제한이 있지만 일반적인 사용에는 충분합니다. API 키는 본인만 사용하며, 다른 사람과 공유하지 마세요.
+        </div>
+
+        <button class="guide-close-btn" id="guideCloseBtn">확인, 이해했습니다</button>
+      </div>
+    </div>
+
+    <div class="error-message" id="errorMsg">
+      <span>⚠️</span>
+      <span id="errorText"></span>
+    </div>
+
+    <div class="input-section">
+      <div class="input-wrapper">
+        <textarea id="nlInput" placeholder="원하는 데이터를 자연어로 설명해 주세요...&#10;&#10;예: 유진투자증권의 현재 활성 가입자 중 투자금액이 1000만원 이상인 고객의 계좌번호, 전략명, 투자금액, 수익률을 보여줘&#10;&#10;⌘+Enter 또는 Ctrl+Enter로 빠르게 생성" rows="4"></textarea>
+      </div>
+      <div class="input-actions">
+        <span class="char-count" id="charCount">0자</span>
+        <button class="btn-generate" id="generateBtn">
+          <div class="spinner"></div>
+          <span class="btn-text">✨ SQL 생성</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="examples-section">
+      <div class="section-title">
+        <span class="icon">💡</span>
+        예시 질문
+      </div>
+      <div class="examples-grid" id="examplesGrid"></div>
+    </div>
+
+    <div class="result-section" id="resultSection">
+      <div class="result-header">
+        <div class="label">
+          <span class="dot"></span>
+          Generated SQL
+        </div>
+        <div class="result-actions">
+          <button id="copyBtn" title="클립보드에 복사">📋 복사</button>
+          <button id="downloadBtn" title=".sql 파일로 다운로드">💾 다운로드</button>
+        </div>
+      </div>
+      <div class="sql-output">
+        <pre id="sqlOutput"></pre>
+      </div>
+    </div>
+
+    <div class="tabs-container">
+      <div class="tabs-header">
+        <button class="tab-btn active" data-tab="history">📜 쿼리 히스토리</button>
+        <button class="tab-btn" data-tab="schema">📊 DB 스키마</button>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" id="panel-history">
+          <div class="history-list" id="historyList">
+            <div class="history-empty">아직 생성된 쿼리가 없습니다</div>
+          </div>
+        </div>
+        <div class="tab-panel" id="panel-schema">
+          <div id="schemaViewer"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+// ============================================================
+// DB Schema & System Prompt for NL-to-SQL Conversion
+// ============================================================
+
+const DB_SCHEMA = {
+  tables: [
+    {
+      name: 'TC5009MT',
+      description: '활성 상품가입 정보 (STATUS="A"인 가입건)',
+      columns: [
+        { name: 'SCCO_CD', type: 'VARCHAR', desc: '증권사 코드 (280=유진투자증권, 270=하나증권)' },
+        { name: 'ACCOUNT', type: 'VARCHAR', desc: '계좌번호' },
+        { name: 'PORTFOLIO', type: 'VARCHAR', desc: '전략(포트폴리오) 코드 — CONCAT(COMD_TYPE, CODE)로 TC3000MT와 조인' },
+        { name: 'PTFL_ID', type: 'VARCHAR', desc: '포트폴리오 ID' },
+        { name: 'FIRST_DATE', type: 'VARCHAR(8)', desc: '상품 최초 가입일 (YYYYMMDD)' },
+        { name: 'STATUS', type: 'CHAR(1)', desc: '상태 (A=활성, T=해지)' },
+        { name: 'FIRST_AMOUNT', type: 'BIGINT', desc: '최초 투자금액' },
+        { name: 'ADD_AMOUNT', type: 'BIGINT', desc: '추가 투자금액' },
+        { name: 'END_REGI_DATE', type: 'VARCHAR(8)', desc: '해지 신청일 (YYYYMMDD), 빈 문자열이면 미해지' },
+        { name: 'STL_DATE', type: 'VARCHAR(8)', desc: '해지 정산일 (YYYYMMDD)' },
+        { name: 'RENEWAL_DATE', type: 'VARCHAR(8)', desc: '자동연장일 (YYYYMMDD)' },
+        { name: 'END_DATE', type: 'VARCHAR(8)', desc: '해지 완료일 (YYYYMMDD)' }
+      ]
+    },
+    {
+      name: 'TC5509MT',
+      description: '해지 완료 상품가입 정보 (해지된 건)',
+      columns: [
+        { name: 'SCCO_CD', type: 'VARCHAR', desc: '증권사 코드 (280=유진투자증권, 270=하나증권)' },
+        { name: 'ACCOUNT', type: 'VARCHAR', desc: '계좌번호' },
+        { name: 'PORTFOLIO', type: 'VARCHAR', desc: '전략(포트폴리오) 코드' },
+        { name: 'PTFL_ID', type: 'VARCHAR', desc: '포트폴리오 ID' },
+        { name: 'FIRST_DATE', type: 'VARCHAR(8)', desc: '상품 최초 가입일 (YYYYMMDD)' },
+        { name: 'STATUS', type: 'CHAR(1)', desc: '상태 (T=해지)' },
+        { name: 'FIRST_AMOUNT', type: 'BIGINT', desc: '최초 투자금액' },
+        { name: 'ADD_AMOUNT', type: 'BIGINT', desc: '추가 투자금액' },
+        { name: 'END_REGI_DATE', type: 'VARCHAR(8)', desc: '해지 신청일 (YYYYMMDD)' },
+        { name: 'STL_DATE', type: 'VARCHAR(8)', desc: '해지 정산일 (YYYYMMDD)' },
+        { name: 'END_DATE', type: 'VARCHAR(8)', desc: '해지 완료일 (YYYYMMDD)' }
+      ]
+    },
+    {
+      name: 'TC5404HS',
+      description: '포트폴리오 일별 수익 이력 (수익률, PnL, 투자금액 등)',
+      columns: [
+        { name: 'DATE', type: 'VARCHAR(8)', desc: '기준일 (YYYYMMDD) — 백틱 필수 `DATE`' },
+        { name: 'SCCO_CD', type: 'VARCHAR', desc: '증권사 코드' },
+        { name: 'ACCOUNT', type: 'VARCHAR', desc: '계좌번호' },
+        { name: 'PTFL_ID', type: 'VARCHAR', desc: '포트폴리오 ID' },
+        { name: 'PORTFOLIO', type: 'VARCHAR', desc: '전략 코드' },
+        { name: 'FIRST_DATE', type: 'VARCHAR(8)', desc: '최초 가입일' },
+        { name: 'PORT_RATE', type: 'DECIMAL', desc: '포트폴리오 수익률 (%)' },
+        { name: 'TOT_PNL', type: 'BIGINT', desc: '총 손익' },
+        { name: 'INV_AMOUNT', type: 'BIGINT', desc: '투자 원금' },
+        { name: 'REMAIN_CASH', type: 'BIGINT', desc: '예수금 잔액' }
+      ]
+    },
+    {
+      name: 'TC5402HS',
+      description: '종목별 보유이력 (개별 종목의 보유 금액)',
+      columns: [
+        { name: 'DATE', type: 'VARCHAR(8)', desc: '기준일 (YYYYMMDD)' },
+        { name: 'ACCOUNT', type: 'VARCHAR', desc: '계좌번호' },
+        { name: 'PORTFOLIO', type: 'VARCHAR', desc: '전략 코드' },
+        { name: 'FIRST_DATE', type: 'VARCHAR(8)', desc: '최초 가입일' },
+        { name: 'CODE', type: 'VARCHAR', desc: '종목코드' },
+        { name: 'BLNC_KRW_AMT', type: 'BIGINT', desc: '보유 원화 금액' }
+      ]
+    },
+    {
+      name: 'TC5406MT',
+      description: '성과수수료 정보',
+      columns: [
+        { name: 'DATE', type: 'VARCHAR(8)', desc: '정산 기준일' },
+        { name: 'SCCO_CD', type: 'VARCHAR', desc: '증권사 코드' },
+        { name: 'ACCOUNT', type: 'VARCHAR', desc: '계좌번호' },
+        { name: 'FIRST_DATE', type: 'VARCHAR(8)', desc: '최초 가입일' },
+        { name: 'PTFL_ID', type: 'VARCHAR', desc: '포트폴리오 ID' },
+        { name: 'PORTFOLIO', type: 'VARCHAR', desc: '전략 코드' },
+        { name: 'RA_FEE', type: 'BIGINT', desc: '성과수수료 금액' },
+        { name: 'FEE_COLLECTION_YN', type: 'CHAR(1)', desc: '수수료 수취 여부 (Y=수취, E=미수취-예수금부족)' },
+        { name: 'FEE_COLLECTION_DTM', type: 'DATETIME', desc: '수수료 수취 일시' }
+      ]
+    },
+    {
+      name: 'TC3000MT',
+      description: '전략(상품) 마스터 정보',
+      columns: [
+        { name: 'PORTFOLIO', type: 'VARCHAR', desc: '전략 코드 전체' },
+        { name: 'CODE', type: 'VARCHAR', desc: '전략 코드 (짧은 버전)' },
+        { name: 'COMD_TYPE', type: 'VARCHAR', desc: '상품 유형 코드' },
+        { name: 'NAME', type: 'VARCHAR', desc: '전략(상품) 이름' },
+        { name: 'INVEST_TYPE', type: 'INT', desc: '투자 위험 등급' },
+        { name: 'REGIST_DATE', type: 'VARCHAR(8)', desc: '출시일 (YYYYMMDD)' },
+        { name: 'PARENT_PORT', type: 'VARCHAR', desc: '부모 포트폴리오 코드' }
+      ]
+    },
+    {
+      name: 'TC5001MT',
+      description: '투자자 성향 정보',
+      columns: [
+        { name: 'UID', type: 'VARCHAR', desc: '사용자 고유 ID' },
+        { name: 'PERSONALITY', type: 'INT', desc: '투자 성향 등급' }
+      ]
+    },
+    {
+      name: 'TP0006MT',
+      description: 'PB(관리자/상담사) 정보',
+      columns: [
+        { name: 'SCCO_CD', type: 'VARCHAR', desc: '증권사 코드' },
+        { name: 'PB_ID', type: 'VARCHAR', desc: 'PB 사용자 ID' },
+        { name: 'SCCO_PB_IDNTF_ID', type: 'VARCHAR', desc: 'PB 사번' },
+        { name: 'PB_NM', type: 'VARCHAR', desc: 'PB 이름' },
+        { name: 'PB_OGDP_BR', type: 'VARCHAR', desc: 'PB 소속 지점 코드' }
+      ]
+    },
+    {
+      name: 'TP0005MT',
+      description: '지점 정보',
+      columns: [
+        { name: 'BR_CD', type: 'VARCHAR', desc: '지점 코드' },
+        { name: 'BR_NM', type: 'VARCHAR', desc: '지점 이름' }
+      ]
+    },
+    {
+      name: 'TP5760MT',
+      description: '증권사 고객 정보',
+      columns: [
+        { name: 'FNNC_CORP_CD', type: 'VARCHAR', desc: '금융사 코드 (=SCCO_CD)' },
+        { name: 'ACNT_NO', type: 'VARCHAR', desc: '계좌번호 (=ACCOUNT)' },
+        { name: 'CSTM_NM', type: 'VARCHAR', desc: '고객명' }
+      ]
+    },
+    {
+      name: 'TE1002MT',
+      description: '종목(주식/ETF) 정보',
+      columns: [
+        { name: 'CODE', type: 'VARCHAR', desc: '종목코드' },
+        { name: 'ETF_TYPE', type: 'VARCHAR', desc: 'ETF 유형 (0=주식형, 1=채권형, NULL=일반주식, 기타=기타)' }
+      ]
+    },
+    {
+      name: 'api_mpot.TC_USER',
+      description: '사용자(고객) 기본정보',
+      columns: [
+        { name: 'UID', type: 'VARCHAR', desc: '사용자 고유 ID' },
+        { name: 'JOIN_DATE', type: 'VARCHAR', desc: '회원가입일시' },
+        { name: 'USER_NAME', type: 'VARCHAR', desc: '사용자 이름' }
+      ]
+    },
+    {
+      name: 'api_mpot.TC_USER_ACCOUNT',
+      description: '사용자 계좌 연동 정보',
+      columns: [
+        { name: 'UID', type: 'VARCHAR', desc: '사용자 고유 ID' },
+        { name: 'ACCOUNT', type: 'VARCHAR', desc: '계좌번호' },
+        { name: 'ACCOUNT_CORP', type: 'VARCHAR', desc: '증권사 코드 (=SCCO_CD)' },
+        { name: 'CHANNEL', type: 'VARCHAR', desc: '가입 경로 (2=PB, 3=MTS, 기타=WEB)' },
+        { name: 'PB_UID', type: 'VARCHAR', desc: '담당 PB UID' },
+        { name: 'TYPE', type: 'INT', desc: '계좌 타입 (1=활성, 99=해지)' },
+        { name: 'DATE', type: 'VARCHAR', desc: '등록일' }
+      ]
+    },
+    {
+      name: 'api_mpot.TC_USER_ACCOUNT_HIST',
+      description: '사용자 계좌 이력 (해지된 계좌)',
+      columns: [
+        { name: 'UID', type: 'VARCHAR', desc: '사용자 고유 ID' },
+        { name: 'ACCOUNT', type: 'VARCHAR', desc: '계좌번호' },
+        { name: 'ACCOUNT_CORP', type: 'VARCHAR', desc: '증권사 코드' },
+        { name: 'TYPE', type: 'INT', desc: '타입 (99=해지)' },
+        { name: 'DATE', type: 'VARCHAR', desc: '등록일' },
+        { name: 'del_date', type: 'VARCHAR', desc: '삭제일' }
+      ]
+    }
+  ],
+
+  relationships: [
+    'TC5009MT.PORTFOLIO = CONCAT(TC3000MT.COMD_TYPE, TC3000MT.CODE) — 활성 가입 ↔ 전략 마스터',
+    'TC5509MT.PORTFOLIO = CONCAT(TC3000MT.COMD_TYPE, TC3000MT.CODE) — 해지 가입 ↔ 전략 마스터',
+    'TC5009MT(SCCO_CD, ACCOUNT, PTFL_ID, PORTFOLIO, FIRST_DATE) = TC5404HS(SCCO_CD, ACCOUNT, PTFL_ID, PORTFOLIO, FIRST_DATE) — 가입 ↔ 수익이력',
+    'TC5009MT(SCCO_CD, ACCOUNT, FIRST_DATE, PTFL_ID, PORTFOLIO) = TC5406MT(SCCO_CD, ACCOUNT, FIRST_DATE, PTFL_ID, PORTFOLIO) AND TC5406MT.DATE = TC5009MT.STL_DATE — 가입 ↔ 성과수수료',
+    'api_mpot.TC_USER_ACCOUNT.ACCOUNT = TC5009MT.ACCOUNT AND api_mpot.TC_USER_ACCOUNT.ACCOUNT_CORP = TC5009MT.SCCO_CD — 사용자 계좌 ↔ 가입',
+    'api_mpot.TC_USER.UID = api_mpot.TC_USER_ACCOUNT.UID — 사용자 ↔ 계좌',
+    'api_mpot.TC_USER_ACCOUNT.PB_UID = TP0006MT.PB_ID — 계좌의 담당 PB',
+    'TP0006MT.PB_OGDP_BR = TP0005MT.BR_CD — PB 소속 지점',
+    'api_mpot.TC_USER_ACCOUNT(ACCOUNT_CORP, ACCOUNT) = TP5760MT(FNNC_CORP_CD, ACNT_NO) — 계좌 ↔ 고객명',
+    'TC5402HS.CODE = TE1002MT.CODE — 보유종목 ↔ 종목정보'
+  ]
+};
+
+// ============================================================
+// Example NL → SQL pairs for few-shot prompting
+// ============================================================
+const EXAMPLE_QUERIES = [
+  {
+    question: '유진투자증권 전체 가입현황을 보여줘',
+    description: '가입/해지 상태, 증권사, 회원가입일, 가입경로, 계좌번호, 관리자, 전략, 투자금액, 수익률, 성과수수료 등 포함',
+    sql: `SELECT CASE
+           WHEN B.STATUS = 'T' THEN '해지'
+           WHEN B.END_REGI_DATE != '' THEN '해지진행중'
+           ELSE '가입'
+    END AS '상품가입여부',
+    CASE
+           WHEN B.SCCO_CD = '280' THEN '유진투자증권'
+           WHEN B.SCCO_CD = '270' THEN '하나증권'
+           ELSE 'NO DATA'
+    END AS '증권사',
+    LEFT(D.JOIN_DATE, 10) AS '회원가입일자',
+    CASE WHEN E.CHANNEL = '3' THEN 'MTS' ELSE 'WEB' END AS '가입경로',
+    E.UID AS '사용자ID',
+    B.ACCOUNT AS '계좌번호',
+    CONCAT(SUBSTR(B.FIRST_DATE, 1, 4), '-', SUBSTR(B.FIRST_DATE, 5, 2), '-', SUBSTR(B.FIRST_DATE, 7, 2)) AS '상품가입일자',
+    B.PORTFOLIO AS '전략코드',
+    C.NAME AS '전략명',
+    NVL(B.FIRST_AMOUNT + B.ADD_AMOUNT, 0) AS '총 투자금액',
+    ROUND(NVL(A.PORT_RATE, 0), 3) AS '수익률'
+FROM TC5009MT B
+    LEFT JOIN TC5404HS A ON A.SCCO_CD = B.SCCO_CD AND A.ACCOUNT = B.ACCOUNT AND A.PTFL_ID = B.PTFL_ID AND A.PORTFOLIO = B.PORTFOLIO AND A.FIRST_DATE = B.FIRST_DATE
+        AND A.\`DATE\` = (SELECT MAX(\`DATE\`) FROM TC5404HS WHERE A.SCCO_CD = SCCO_CD AND A.ACCOUNT = ACCOUNT AND A.PTFL_ID = PTFL_ID AND A.PORTFOLIO = PORTFOLIO)
+        AND A.\`DATE\` <= DATE_FORMAT(NOW(), '%Y%m%d')
+    INNER JOIN TC3000MT C ON B.PORTFOLIO = CONCAT(C.COMD_TYPE, C.CODE)
+    INNER JOIN api_mpot.TC_USER_ACCOUNT E ON B.ACCOUNT = E.ACCOUNT AND B.SCCO_CD = E.ACCOUNT_CORP
+    INNER JOIN api_mpot.TC_USER D ON E.UID = D.UID
+WHERE B.SCCO_CD = 280
+ORDER BY 1, 8 DESC;`
+  },
+  {
+    question: '상품별 가입수와 AUM을 보여줘',
+    description: '전략코드별 가입 수, 투자금액, AUM 집계',
+    sql: `SET @SCCO_CD = 280;
+SELECT
+    MAIN_A.\`전략코드\`,
+    (SELECT \`name\` FROM TC3000MT WHERE CONCAT(COMD_TYPE, LEFT(CODE, 3)) = MAIN_A.\`전략코드\` LIMIT 1) AS \`전략명\`,
+    COUNT(1) AS \`가입수\`,
+    SUM(MAIN_A.\`투자금액\`) AS \`투자금액\`,
+    SUM(MAIN_A.\`AUM\`) AS \`AUM\`
+FROM (
+    SELECT LEFT(A.PORTFOLIO, 5) AS \`전략코드\`,
+           A.PTFL_ID AS \`ptfl_id\`,
+           (A.FIRST_AMOUNT + A.ADD_AMOUNT) AS \`투자금액\`,
+           IFNULL(D.INV_AMOUNT + D.TOT_PNL, A.FIRST_AMOUNT) AS \`AUM\`
+    FROM TC5009MT A
+        LEFT JOIN TC5404HS D ON D.SCCO_CD = A.SCCO_CD AND D.ACCOUNT = A.ACCOUNT AND D.PTFL_ID = A.PTFL_ID AND D.PORTFOLIO = A.PORTFOLIO AND D.FIRST_DATE = A.FIRST_DATE
+            AND D.\`DATE\` = (SELECT MAX(\`DATE\`) FROM TC5404HS WHERE D.SCCO_CD = SCCO_CD AND D.ACCOUNT = ACCOUNT AND D.PTFL_ID = PTFL_ID AND D.FIRST_DATE = FIRST_DATE AND D.PORTFOLIO = PORTFOLIO)
+            AND D.\`DATE\` <= DATE_FORMAT(NOW(), '%Y%m%d')
+    WHERE STATUS = 'A' AND A.SCCO_CD = @SCCO_CD
+    GROUP BY LEFT(A.PORTFOLIO, 5), A.PTFL_ID
+) AS MAIN_A
+GROUP BY MAIN_A.\`전략코드\`;`
+  },
+  {
+    question: '이번 달 해지된 계좌의 수수료 정산 내역을 보여줘',
+    description: '해지 수수료 정산 내역 (가입채널, UID, 증권사, 고객명, 상품명, 성과수수료 등)',
+    sql: `SET @financialCorpCode = 280;
+SET @targetMonth = CONCAT(DATE_FORMAT(NOW(), '%Y%m'), '%');
+
+SELECT
+    IF(A.CHANNEL = '2', 'PB', 'MTS') AS '가입 채널',
+    A.UID AS 'UID',
+    IF(A.ACCOUNT_CORP = '280', '유진증권', '하나증권') AS '증권사',
+    A.ACCOUNT AS '계좌번호',
+    NVL(F.CSTM_NM, G.USER_NAME) AS '고객명',
+    C.NAME AS '상품명',
+    DATE_FORMAT(B.FIRST_DATE, '%Y-%m-%d') AS '상품가입일자',
+    B.FIRST_AMOUNT + B.ADD_AMOUNT AS '가입금액',
+    IF(E.RA_FEE IS NOT NULL, E.RA_FEE, 0) AS '성과수수료',
+    E.FEE_COLLECTION_YN AS '수수료 징수 여부'
+FROM api_mpot.TC_USER_ACCOUNT A
+    INNER JOIN TC5509MT B ON A.ACCOUNT = B.ACCOUNT
+    INNER JOIN TC3000MT C ON B.PORTFOLIO = C.PORTFOLIO
+    LEFT JOIN TC5406MT E ON A.ACCOUNT = E.ACCOUNT AND B.FIRST_DATE = E.FIRST_DATE AND B.PORTFOLIO = E.PORTFOLIO AND B.PTFL_ID = E.PTFL_ID
+    LEFT JOIN TP5760MT F ON A.ACCOUNT_CORP = F.FNNC_CORP_CD AND A.ACCOUNT = F.ACNT_NO
+    LEFT JOIN api_mpot.TC_USER G ON A.UID = G.UID
+WHERE B.END_DATE LIKE @targetMonth AND B.SCCO_CD = @financialCorpCode;`
+  },
+  {
+    question: '현재 총 AUM은 얼마야?',
+    description: '활성 가입 + 해지 진행중 계좌의 AUM 합계',
+    sql: `SELECT
+    NVL((
+        SELECT SUM(D.INV_AMOUNT + D.TOT_PNL)
+        FROM TC5009MT A
+            INNER JOIN (
+                SELECT * FROM TC5404HS
+                WHERE (DATE, SCCO_CD, ACCOUNT, FIRST_DATE, PTFL_ID, PORTFOLIO) IN
+                    (SELECT MAX(DATE), SCCO_CD, ACCOUNT, FIRST_DATE, PTFL_ID, PORTFOLIO FROM TC5404HS GROUP BY SCCO_CD, ACCOUNT, FIRST_DATE, PTFL_ID, PORTFOLIO)
+            ) D ON A.ACCOUNT = D.ACCOUNT AND A.SCCO_CD = D.SCCO_CD AND LEFT(A.PORTFOLIO, 5) = LEFT(D.PORTFOLIO, 5)
+        WHERE A.STATUS = 'A' AND A.SCCO_CD = '280'
+    ), 0) AS 'AUM';`
+  },
+  {
+    question: '활성 계좌 수를 알려줘',
+    description: '현재 활성 상태인 고유 계좌 수',
+    sql: `SELECT COUNT(DISTINCT A.ACCOUNT) AS '활성계좌수'
+FROM TC5009MT A
+WHERE A.STATUS = 'A' AND A.SCCO_CD = '280';`
+  }
+];
+
+// ============================================================
+// Build the system prompt for the LLM
+// ============================================================
+function buildSystemPrompt() {
+  let schemaText = '## 데이터베이스 스키마 (MariaDB)\n\n';
+
+  for (const table of DB_SCHEMA.tables) {
+    schemaText += `### ${table.name}\n`;
+    schemaText += `${table.description}\n\n`;
+    schemaText += '| 컬럼명 | 타입 | 설명 |\n|--------|------|------|\n';
+    for (const col of table.columns) {
+      schemaText += `| ${col.name} | ${col.type} | ${col.desc} |\n`;
+    }
+    schemaText += '\n';
+  }
+
+  schemaText += '## 테이블 간 관계 (JOIN 조건)\n\n';
+  for (const rel of DB_SCHEMA.relationships) {
+    schemaText += `- ${rel}\n`;
+  }
+
+  let examplesText = '\n## 예시 (자연어 → SQL)\n\n';
+  for (const ex of EXAMPLE_QUERIES) {
+    examplesText += `### 질문: "${ex.question}"\n`;
+    examplesText += `설명: ${ex.description}\n`;
+    examplesText += '```sql\n' + ex.sql + '\n```\n\n';
+  }
+
+  return `당신은 MariaDB SQL 전문가입니다. 아래 데이터베이스 스키마를 기반으로 사용자의 한국어 자연어 질문을 MariaDB SQL 쿼리로 변환해주세요.
+
+## 규칙
+1. MariaDB 문법만 사용하세요 (NVL, IFNULL, DATE_FORMAT 등).
+2. 예약어인 컬럼명(DATE 등)은 반드시 백틱(\`)으로 감싸세요.
+3. 증권사 코드: 280=유진투자증권, 270=하나증권.
+4. 날짜 형식은 YYYYMMDD (VARCHAR)입니다. 날짜 비교 시 문자열로 처리하세요.
+5. 활성 가입은 TC5009MT (STATUS='A'), 해지 완료는 TC5509MT (STATUS='T')에 있습니다.
+6. AUM = INV_AMOUNT + TOT_PNL (TC5404HS 최신 레코드 기준).
+7. 총 투자금액 = FIRST_AMOUNT + ADD_AMOUNT.
+8. SQL 쿼리만 출력하세요. 설명이 필요하면 SQL 주석(-- 또는 /* */)으로 작성하세요.
+9. 변수가 필요한 경우 SET @변수명 = 값; 으로 설정하세요.
+10. 한글 별칭을 사용하세요 (예: AS '가입수').
+
+${schemaText}
+${examplesText}`;
+}
+
+// ============================================================
+// Get schema info for the schema viewer
+// ============================================================
+function getSchemaForViewer() {
+  return DB_SCHEMA.tables;
+}
+
+function getRelationships() {
+  return DB_SCHEMA.relationships;
+}
+
+function getExampleQuestions() {
+  return EXAMPLE_QUERIES.map(q => ({
+    question: q.question,
+    description: q.description
+  }));
+}
+
+// Export for use in app.js
+window.NL2SQL = {
+  buildSystemPrompt,
+  getSchemaForViewer,
+  getRelationships,
+  getExampleQuestions,
+  EXAMPLE_QUERIES
+};
+
+// ============================================================
+// NL2SQL — App Logic (Secure Version - User API Key Input)
+// ============================================================
+
+(function () {
+  'use strict';
+
+  // ── DOM Elements ──
+  const apiKeyInput = document.getElementById('apiKey');
+  const saveApiKeyBtn = document.getElementById('saveApiKey');
+  const apiStatus = document.getElementById('apiStatus');
+  const guideBtn = document.getElementById('guideBtn');
+  const guideOverlay = document.getElementById('guideOverlay');
+  const guideCloseBtn = document.getElementById('guideCloseBtn');
+  const modelSelect = document.getElementById('modelSelect');
+  const nlInput = document.getElementById('nlInput');
+  const charCount = document.getElementById('charCount');
+  const generateBtn = document.getElementById('generateBtn');
+  const resultSection = document.getElementById('resultSection');
+  const sqlOutput = document.getElementById('sqlOutput');
+  const copyBtn = document.getElementById('copyBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const errorMsg = document.getElementById('errorMsg');
+  const errorText = document.getElementById('errorText');
+  const examplesGrid = document.getElementById('examplesGrid');
+  const historyList = document.getElementById('historyList');
+  const schemaViewer = document.getElementById('schemaViewer');
+  const toast = document.getElementById('toast');
+
+  // ── Fallback model order ──
+  const FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-pro'];
+
+  // ── State ──
+  let currentSQL = '';
+  let history = JSON.parse(localStorage.getItem('nl2sql_history') || '[]');
+
+  // ── API Key Management ──
+  function loadApiKey() {
+    const saved = localStorage.getItem('nl2sql_api_key');
+    if (saved) {
+      apiKeyInput.value = saved;
+      updateApiStatus(true);
+    }
+  }
+
+  function saveApiKey() {
+    const key = apiKeyInput.value.trim();
+    if (!key) {
+      showError('API 키를 입력해 주세요. 우측의 "API 키 발급 가이드"를 참고하세요.');
+      return;
+    }
+    if (!key.startsWith('AIza')) {
+      showError('올바른 Google API 키 형식이 아닙니다. 키는 "AIza"로 시작합니다.');
+      return;
+    }
+    localStorage.setItem('nl2sql_api_key', key);
+    localStorage.setItem('nl2sql_model', modelSelect.value);
+    updateApiStatus(true);
+    showToast('API 키가 저장되었습니다.', 'success');
+  }
+
+  function updateApiStatus(connected) {
+    apiStatus.className = connected ? 'api-status connected' : 'api-status disconnected';
+    apiStatus.textContent = connected ? '연결됨 ✓' : '미연결';
+  }
+
+  // ── Initialize ──
+  function init() {
+    loadApiKey();
+    const savedModel = localStorage.getItem('nl2sql_model');
+    if (savedModel) modelSelect.value = savedModel;
+    renderExamples();
+    renderHistory();
+    renderSchema();
+    bindEvents();
+
+    // Show guide automatically if no API key is saved
+    if (!localStorage.getItem('nl2sql_api_key')) {
+      guideOverlay.classList.add('visible');
+    }
+  }
+
+  // ── Example Cards ──
+  function renderExamples() {
+    const examples = window.NL2SQL.getExampleQuestions();
+    examplesGrid.innerHTML = examples.map((ex, i) => `
+      <div class="example-card" data-index="${i}">
+        <div class="question">${ex.question}</div>
+        <div class="desc">${ex.description}</div>
+      </div>
+    `).join('');
+  }
+
+  // ── Schema Viewer ──
+  function renderSchema() {
+    const tables = window.NL2SQL.getSchemaForViewer();
+    schemaViewer.innerHTML = tables.map((t, i) => `
+      <div class="schema-table">
+        <div class="schema-table-header" data-schema="${i}">
+          <span class="table-name">${t.name}</span>
+          <span class="table-desc">${t.description}</span>
+          <span class="toggle-icon">▼</span>
+        </div>
+        <div class="schema-columns" id="schema-cols-${i}">
+          ${t.columns.map(c => `
+            <div class="schema-col-row">
+              <span class="schema-col-name">${c.name}</span>
+              <span class="schema-col-type">${c.type}</span>
+              <span class="schema-col-desc">${c.desc}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── History ──
+  function renderHistory() {
+    if (history.length === 0) {
+      historyList.innerHTML = '<div class="history-empty">아직 생성된 쿼리가 없습니다</div>';
+      return;
+    }
+    historyList.innerHTML = history.map((item, i) => `
+      <div class="history-item" data-index="${i}">
+        <div class="h-question">${item.question}</div>
+        <div class="h-time">${item.time}</div>
+        <div class="h-actions">
+          <button class="load-btn" data-index="${i}">불러오기</button>
+          <button class="delete-btn" data-index="${i}">삭제</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function addToHistory(question, sql) {
+    const entry = { question, sql, time: new Date().toLocaleString('ko-KR') };
+    history.unshift(entry);
+    if (history.length > 50) history.pop();
+    localStorage.setItem('nl2sql_history', JSON.stringify(history));
+    renderHistory();
+  }
+
+  // ── SQL Generation via Gemini API ──
+  async function callGeminiAPI(apiKey, model, systemPrompt, question) {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ parts: [{ text: question }] }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }
+        })
+      }
+    );
+    return response;
+  }
+
+  async function generateSQL() {
+    const apiKey = localStorage.getItem('nl2sql_api_key');
+    if (!apiKey) {
+      showError('먼저 API 키를 입력하고 저장해 주세요. 우측의 "API 키 발급 가이드"를 참고하세요.');
+      guideOverlay.classList.add('visible');
+      return;
+    }
+
+    const question = nlInput.value.trim();
+    if (!question) { showError('질문을 입력해 주세요.'); return; }
+
+    hideError();
+    setLoading(true);
+
+    const systemPrompt = window.NL2SQL.buildSystemPrompt();
+    const selectedModel = modelSelect.value;
+    const modelsToTry = [selectedModel, ...FALLBACK_MODELS.filter(m => m !== selectedModel)];
+
+    for (const model of modelsToTry) {
+      try {
+        if (model !== selectedModel) {
+          showToast(`${selectedModel} 할당량 초과 → ${model} 시도 중...`, 'info');
+        }
+
+        const response = await callGeminiAPI(apiKey, model, systemPrompt, question);
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          const errMsg = errData?.error?.message || '';
+          if (response.status === 429 || errMsg.toLowerCase().includes('quota')) {
+            console.warn(`${model}: 할당량 초과, 다음 모델 시도...`);
+            continue;
+          }
+          throw new Error(errMsg || `API 요청 실패 (${response.status})`);
+        }
+
+        const data = await response.json();
+        let sqlText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        sqlText = sqlText.replace(/^```sql\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+
+        if (!sqlText) { throw new Error('SQL 쿼리를 생성할 수 없습니다. 질문을 더 구체적으로 작성해 주세요.'); }
+
+        currentSQL = sqlText;
+        showResult(sqlText);
+        addToHistory(question, sqlText);
+        const usedModel = model === selectedModel ? model : `${model} (대체)`;
+        showToast(`SQL 쿼리 생성 완료! (${usedModel})`, 'success');
+        setLoading(false);
+        return;
+      } catch (err) {
+        if (err.message.toLowerCase().includes('quota') && model !== modelsToTry[modelsToTry.length - 1]) continue;
+        showError(err.message);
+        setLoading(false);
+        return;
+      }
+    }
+    showError('모든 모델의 할당량이 초과되었습니다. 잠시 후 다시 시도해 주세요.');
+    setLoading(false);
+  }
+
+  // ── SQL Syntax Highlighting ──
+  function highlightSQL(sql) {
+    let html = sql.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    html = html.replace(/(--[^\n]*)/g, '<span class="sql-comment">$1</span>');
+    html = html.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="sql-comment">$1</span>');
+    html = html.replace(/('(?:[^'\\]|\\.)*')/g, '<span class="sql-string">$1</span>');
+    html = html.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="sql-number">$1</span>');
+    const keywords = [
+      'SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'NOT', 'IN', 'ON', 'AS',
+      'INNER\\s+JOIN', 'LEFT\\s+JOIN', 'RIGHT\\s+JOIN', 'CROSS\\s+JOIN', 'JOIN',
+      'GROUP\\s+BY', 'ORDER\\s+BY', 'HAVING', 'LIMIT', 'OFFSET',
+      'UNION\\s+ALL', 'UNION', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END',
+      'INSERT\\s+INTO', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP',
+      'SET', 'VALUES', 'INTO', 'IS\\s+NULL', 'IS\\s+NOT\\s+NULL',
+      'LIKE', 'BETWEEN', 'EXISTS', 'DISTINCT', 'DESC', 'ASC',
+      'NULL', 'TRUE', 'FALSE', 'IF', 'IFNULL', 'CONCAT', 'SUBSTR',
+      'LEFT', 'RIGHT', 'DATE_FORMAT', 'STR_TO_DATE', 'DATE_ADD', 'DATE_SUB',
+      'DATE', 'NOW', 'CURDATE', 'INTERVAL', 'YEAR', 'MONTH', 'DAY',
+      'NVL', 'ROUND', 'TRUNCATE', 'GREATEST', 'SUM', 'COUNT', 'MAX', 'MIN', 'AVG'
+    ];
+    const kwPattern = new RegExp(`\\b(${keywords.join('|')})\\b`, 'gi');
+    html = html.replace(kwPattern, (match) => `<span class="sql-keyword">${match}</span>`);
+    return html;
+  }
+
+  function showResult(sql) {
+    sqlOutput.innerHTML = highlightSQL(sql);
+    resultSection.classList.add('visible');
+    resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function setLoading(loading) {
+    generateBtn.disabled = loading;
+    generateBtn.classList.toggle('loading', loading);
+  }
+
+  function showError(msg) { errorText.textContent = msg; errorMsg.classList.add('visible'); }
+  function hideError() { errorMsg.classList.remove('visible'); }
+
+  function showToast(message, type = 'info') {
+    toast.textContent = message;
+    toast.className = `toast ${type}`;
+    requestAnimationFrame(() => toast.classList.add('visible'));
+    setTimeout(() => toast.classList.remove('visible'), 3000);
+  }
+
+  function copySQL() {
+    if (!currentSQL) return;
+    navigator.clipboard.writeText(currentSQL).then(() => {
+      copyBtn.classList.add('copied');
+      copyBtn.textContent = '✅ 복사됨!';
+      setTimeout(() => { copyBtn.classList.remove('copied'); copyBtn.innerHTML = '📋 복사'; }, 2000);
+    });
+  }
+
+  function downloadSQL() {
+    if (!currentSQL) return;
+    const blob = new Blob([currentSQL], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `query_${Date.now()}.sql`; a.click();
+    URL.revokeObjectURL(url);
+    showToast('SQL 파일이 다운로드 되었습니다.', 'success');
+  }
+
+  function bindEvents() {
+    // API Key
+    saveApiKeyBtn.addEventListener('click', saveApiKey);
+    apiKeyInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') saveApiKey(); });
+    modelSelect.addEventListener('change', () => localStorage.setItem('nl2sql_model', modelSelect.value));
+
+    // Guide modal
+    guideBtn.addEventListener('click', () => guideOverlay.classList.add('visible'));
+    guideCloseBtn.addEventListener('click', () => guideOverlay.classList.remove('visible'));
+    guideOverlay.addEventListener('click', (e) => { if (e.target === guideOverlay) guideOverlay.classList.remove('visible'); });
+
+    // Input
+    nlInput.addEventListener('input', () => charCount.textContent = `${nlInput.value.length}자`);
+    nlInput.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') generateSQL(); });
+    generateBtn.addEventListener('click', generateSQL);
+    copyBtn.addEventListener('click', copySQL);
+    downloadBtn.addEventListener('click', downloadSQL);
+
+    examplesGrid.addEventListener('click', (e) => {
+      const card = e.target.closest('.example-card');
+      if (card) {
+        const idx = parseInt(card.dataset.index);
+        const examples = window.NL2SQL.getExampleQuestions();
+        nlInput.value = examples[idx].question;
+        charCount.textContent = `${nlInput.value.length}자`;
+        nlInput.focus();
+        generateSQL();
+      }
+    });
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`panel-${btn.dataset.tab}`).classList.add('active');
+      });
+    });
+
+    schemaViewer.addEventListener('click', (e) => {
+      const header = e.target.closest('.schema-table-header');
+      if (header) {
+        const idx = header.dataset.schema;
+        document.getElementById(`schema-cols-${idx}`).classList.toggle('open');
+        header.classList.toggle('open');
+      }
+    });
+
+    historyList.addEventListener('click', (e) => {
+      const loadBtn = e.target.closest('.load-btn');
+      const deleteBtn = e.target.closest('.delete-btn');
+      if (loadBtn) {
+        const item = history[parseInt(loadBtn.dataset.index)];
+        if (item) { nlInput.value = item.question; charCount.textContent = `${nlInput.value.length}자`; currentSQL = item.sql; showResult(item.sql); showToast('히스토리에서 불러왔습니다.', 'info'); }
+      }
+      if (deleteBtn) {
+        history.splice(parseInt(deleteBtn.dataset.index), 1);
+        localStorage.setItem('nl2sql_history', JSON.stringify(history));
+        renderHistory();
+        showToast('히스토리가 삭제되었습니다.', 'info');
+      }
+    });
+  }
+
+  init();
+})();
+  </script>
+</body>
+</html>
